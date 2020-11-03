@@ -21,11 +21,11 @@ class DataResolutionDAO {
         $this->conn = $conn;
     }
     
-    public function fieldHasComments($projectid, $record, $field, $instanceid)
+    public function fieldHasComments($projectid, $record, $field, $instanceid, $eventid)
     {
-        $sql = "SELECT count(*) as count FROM redcap_data_quality_status WHERE project_id=? AND field_name=? AND instance = ? AND record = ?";
+        $sql = "SELECT count(*) as count FROM redcap_data_quality_status WHERE project_id=? AND field_name=? AND instance = ? AND record = ? AND event_id = ?";
         $prepared = mysqli_prepare($this->conn, $sql);
-        mysqli_stmt_bind_param($prepared, "dsds", $projectid, $field, $instanceid, $record);
+        mysqli_stmt_bind_param($prepared, "dsdsd", $projectid, $field, $instanceid, $record, $eventid);
         mysqli_stmt_execute($prepared);
         mysqli_stmt_bind_result($prepared, $count);
         mysqli_stmt_fetch($prepared);
@@ -36,8 +36,56 @@ class DataResolutionDAO {
         return $count > 0;
 
     }
+
+    public function fieldIsVerifiable($projectid, $record, $field, $instanceid, $eventid)
+    {
+        
+        // field status complete is not verifiable
+        if (strpos($field,'_complete') !== false) {
+            return false;
+        }
+
+        // fields empty are not verifiable
+        if($this->fieldEmpty($projectid, $record, $field, $instanceid, $eventid)){
+            return false;
+        }
+
+        // fields with comment are not verifiable
+        if($this->fieldHasComments($projectid, $record, $field, $instanceid, $eventid)){
+            return false;
+        }
+
+        return true;
+    }
     
-    
+    public function fieldEmpty($projectid, $record, $field, $instanceid, $eventid){
+
+        $ret = false;
+
+        if($instanceid > 1){
+            $whereInst = "AND instance = {$instanceid}";
+        }else{
+            $whereInst = "AND (instance IS NULL OR instance = {$instanceid})";
+        }
+
+        $sql = "SELECT * FROM redcap_data 
+        WHERE project_id = {$projectid} 
+        AND event_id = {$eventid} 
+        AND record = {$record} 
+        AND field_name = '{$field}' 
+        {$whereInst}";
+
+        $startTreatmentResult = mysqli_query($this->conn, $sql);
+        $queryResult = mysqli_fetch_assoc($startTreatmentResult);
+
+        if(empty($queryResult) || $queryResult['value'] == ""){
+            $ret = true;
+        }
+
+        return $ret;
+
+    }
+
     /**
      * 
      * @param int $projectid
@@ -65,11 +113,11 @@ class DataResolutionDAO {
         $sql = "insert into redcap_data_quality_resolutions (status_id, ts, user_id, response_requested,
                                         response, comment, current_query_status, upload_doc_id)
                                         VALUES (?, ?, ?,
-                                        0, NULL, NULL, ?, NULL)"; //UPLOADDOC_ID
+                                        0, NULL, 'Field verified by Verify All tool (simultaneous verification of multiple fields)', ?, NULL)"; //UPLOADDOC_ID
         $prepared_resolution = mysqli_prepare($this->conn, $sql);
         $now = NOW;
         mysqli_stmt_bind_param($prepared_resolution, "dsds", $status_id, $now, $userid, $dr_status);
-        mysqli_execute($prepared_resolution);
+        mysqli_stmt_execute($prepared_resolution);
         if (mysqli_stmt_error($prepared_resolution) != "")
         {
             throw new Exception("Unable to execute query " . mysqli_stmt_error($prepared_resolution) . " $sql");

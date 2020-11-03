@@ -27,8 +27,20 @@
                     If all the above conditions are met you should be able to see the 'Verify all' button.<BR/>
                     If you don't understand why a user doesn't see the 'Verify all' button you can enable the debug button in the project settings of the module.
                     <BR/><BR/>
-                    Once you've successfully verified all records you should see an overview of what fields are verified/skipped.
-                    <img src="verified.png"/>
+                    Once you've clicked on 'Verify all' button you should see a list of fields that can be verified and you should be able to select each one or all and than set they as verified.
+                    <br/>
+                    <img src="verify_all_btn.jpg" width="100%"/>
+                    <br/>
+                    Fields that can not be verified are:
+                    <ul>
+                        <li>Fileds just verified;</li>
+                        <li>Fields with open queries;</li>
+                        <li>Fields calculate;</li>
+                        <li>Fields with @HIDDEN or @NOVERIFYALL tag;</li>
+                        <li>Fields empty;</li>
+                        <li>Redcap fields "record_id" and "<< instrument >>_complete";</li>
+                    </ul>
+                    <img src="verify_all_check.jpg" width="100%" />
                 </div>
             </div>
         </div>
